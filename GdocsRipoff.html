@@ -1,0 +1,312 @@
+<!doctype html>
+<html>
+    <head>
+        <title> Write, create, and publish your own documents! </title>
+        <style>
+            body {
+                background-color: #a2a2a2;
+                margin-top: 10px;
+            }
+
+            #topBar {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                border: 5px solid #3a3a3a;
+                padding: 10px;
+            }
+
+            #documentInfo {
+                display: flex;
+                align-items: center;
+                padding-right: 20px;
+                border-right: 5px solid #3a3a3a;
+                flex-shrink: 1;
+                min-width: 300px;
+            }
+
+            #documentInfo p {
+                margin: 0;
+                white-space: nowrap;
+            }
+
+            #textColorSelector p {
+                margin: 0 5px 0 0;
+                display: inline;
+            }
+
+            #overrideCreds {
+                padding-right: 20px;
+                border-right: 5px solid #3a3a3a;
+            }
+            
+            #overrideCreds p {
+                margin: 0 5px 0 0;
+                display: inline;
+            }
+
+            #textColorSelector {
+                border-right: 5px solid #3a3a3a;
+            }
+
+            #bodyTextBox {
+                width: 90vw;
+                padding: 15px;
+                height: 85vh;
+                border: 5px solid #3a3a3a;
+                white-space: pre-wrap;
+                tab-size: 4;
+            }
+
+            #searchLink {
+                margin-left: auto;
+            }
+
+            #mainBody {
+                display: flex;              /* spacing between text and image */
+                align-items: flex-start;  /* align top edges */
+            }
+        </style>
+    </head>
+
+    <body style="font-family:monospace; font-weight: bold;">
+        <div id="topBar">
+
+            <div id="documentInfo">
+                <p> your name here: </p>
+                <input type="text" id="author" placeholder="name here limit 50 letters" maxlength="50">
+                <p id="docNameAuthor"> -|- </p>
+                <p> document title here: </p>
+                <input type="text" id="title" placeholder="title here limit 50 letters" maxlength="50">
+            </div>
+
+            <div id="textColorSelector">
+                <p>text color selector</p>
+                <select id="colorSelector">
+                    <option value="black">black</option>
+                    <option value="gray">gray</option>
+                    <option value="#ff6666">light red</option>
+                    <option value="red">red</option>
+                    <option value="#ffad66">light orange</option>
+                    <option value="orange">orange</option>
+                    <option value="#f7ff66">light yellow</option>
+                    <option value="yellow">yellow</option>
+                    <option value="#73ff66">light green</option>
+                    <option value="green">green</option>
+                    <option value="#66b5ff">light blue</option>
+                    <option value="blue">blue</option>
+                    <option value="#ff91fb">light pink</option>
+                    <option value="magenta">pink</option>
+                    <option value="#c987ff">light purple</option>
+                    <option value="purple">purple</option>
+                </select>
+
+                <p id="currentTextColorP"> no detected color </p>
+            </div>
+
+            <div id="overrideCreds">
+                <p id="passStatus"> input document password for upload and overwrite </p>
+                <input type="text" id="docPassword" placeholder="document password">
+            </div>
+
+            <div id="postDiv">
+                <button id="post"> publish </button>
+            </div>
+
+            <a id="searchLink" href="searchPage.html"> search documents! </a>
+        </div>
+
+        <div id="mainBody">
+            <div id="bodyTextBox" contenteditable="true"> </div>
+            <img src="john's_Program.png" id="JohnsProgramImg">
+        </div>
+
+        <script type="module">
+            // Import the functions you need from the SDKs you need
+
+            import { initializeApp} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+            import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+            import {getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+            // TODO: Add SDKs for Firebase products that you want to use
+            // https://firebase.google.com/docs/web/setup#available-libraries
+
+            // Your web app's Firebase configuration
+            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+
+            const firebaseConfig = {
+                apiKey: "AIzaSyAHozZE5EsG51NFR-eoIS3ixJk6NNORdlQ",
+                authDomain: "gdocsdb-d1d04.firebaseapp.com",
+                projectId: "gdocsdb-d1d04",
+                storageBucket: "gdocsdb-d1d04.firebasestorage.app",
+                messagingSenderId: "573544296672",
+                appId: "1:573544296672:web:eb6cd3d31c7a33b3ae6085",
+                measurementId: "G-H5SS5SL3WK"
+            };
+
+            // Initialize Firebase
+
+            const app = initializeApp(firebaseConfig);
+            const analytics = getAnalytics(app);
+
+            const db = getFirestore(app);
+
+
+            ////-------------------------------- MAIN CODE --------------------------------//// 
+
+
+            const colorSelector = document.getElementById("colorSelector");
+            const bodyTextBox = document.getElementById("bodyTextBox");
+            const selectedColorP = document.getElementById("currentTextColorP");
+            const publishButton = document.getElementById("post");
+            const titleBox = document.getElementById("title");
+            const authorBox = document.getElementById("author");
+            const passwordBox = document.getElementById("docPassword");
+            const statusBar = document.getElementById("passStatus");
+
+            let savedRange = null;
+
+            document.addEventListener("click", () => {
+                selectedColorP.textContent = getCaretTextColor();
+            });
+
+            document.addEventListener("selectionchange", () => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) return;
+
+                const range = sel.getRangeAt(0);
+                if (bodyTextBox.contains(range.startContainer)) {
+                    savedRange = range.cloneRange();
+                }
+            });
+
+            publishButton.onclick = async () => {
+                if(authorBox.value === "" || titleBox.value === "") {
+                    alert("fill in name and title in the top left corner.");
+                    return
+                }
+
+                if(passwordBox.value === "") {
+                    alert("fill in password near the publish button.");
+                    return;
+                }
+
+                if(bodyTextBox.innerHTML.trim() === "") {
+                    alert("why would you post an empty document? type something.");
+                    return;
+                }
+
+                const docRef = doc(db, "docs", `${authorBox.value}_${titleBox.value}`);
+
+                const snap = await getDoc(docRef);
+                const data = snap.data();
+
+                if(snap.exists()) {
+                    if(data.password === passwordBox.value) {
+                        await setDoc(docRef, {content: bodyTextBox.innerHTML}, {merge: true});
+                        statusBar.textContent = `successfully updated Document ${titleBox.value}`;
+                    } else {
+                        statusBar.textContent = "wrong password";
+                    }
+                } else {
+                    await setDoc(docRef, {content: bodyTextBox.innerHTML, reads: 0, password: passwordBox.value, author: authorBox.value, title:titleBox.value});
+                }
+            };
+
+            bodyTextBox.addEventListener("keydown", (e) => {
+                if (e.key === "Tab") {
+                    e.preventDefault();
+
+                    const sel = window.getSelection();
+                    if (!sel || sel.rangeCount === 0) return;
+
+                    const range = sel.getRangeAt(0);
+
+                    // Insert a tab character (or spaces)
+                    const tabNode = document.createTextNode("\t");
+                    range.insertNode(tabNode);
+
+                    // Move caret after the tab
+                    range.setStartAfter(tabNode);
+                    range.setEndAfter(tabNode);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            });
+
+            colorSelector.addEventListener("change", () => {
+                addColorSpan(colorSelector.value, bodyTextBox);
+            });
+
+            function addColorSpan(color) {
+                insertSpanAt(" type here ", color)
+            }
+
+            function isCaretInsideEditor(range) {
+                return bodyTextBox.contains(range.startContainer);
+            }
+
+            function insertSpanAt(text, color) {
+                const sel = window.getSelection();
+
+                let range = null;
+
+                if (sel && sel.rangeCount > 0 && bodyTextBox.contains(sel.getRangeAt(0).startContainer)) {
+                    range = sel.getRangeAt(0);
+                } else if (savedRange) {
+                    range = savedRange;
+                } else {
+                    bodyTextBox.focus();
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(bodyTextBox);
+                    newRange.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                    range = newRange;
+                }
+
+                const span = document.createElement("span");
+                span.style.color = color;
+                span.textContent = text;
+
+                range.insertNode(span);
+
+                range.setStartAfter(span);
+                range.collapse(true);
+
+                sel.removeAllRanges();
+                sel.addRange(range);
+
+                savedRange = range.cloneRange();
+            }
+
+            function getCaretPosition() {
+                const selection = window.getSelection();
+
+                if (!selection || selection.rangeCount === 0) {
+                    return null;
+                }
+
+                return selection.getRangeAt(0);
+            }
+
+            function getCaretTextColor() {
+                const range = getCaretPosition();
+
+                let node = range.startContainer;
+
+                // If it's a text node, climb to its parent element
+                if (node.nodeType === Node.TEXT_NODE) {
+                    node = node.parentElement;
+                }
+
+                // If caret is directly in the contenteditable div
+                if (node === bodyTextBox) {
+                    return getComputedStyle(bodyTextBox).color;
+                }
+
+                return getComputedStyle(node).color;
+            }
+        </script>
+    </body>
+</html>
