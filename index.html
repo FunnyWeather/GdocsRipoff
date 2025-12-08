@@ -81,7 +81,6 @@
             </div>
 
             <div id="textColorSelector">
-                <p>text color selector</p>
                 <select id="colorSelector">
                     <option value="black">black</option>
                     <option value="gray">gray</option>
@@ -100,8 +99,6 @@
                     <option value="#c987ff">light purple</option>
                     <option value="purple">purple</option>
                 </select>
-
-                <p id="currentTextColorP"> no detected color </p>
             </div>
 
             <div id="overrideCreds">
@@ -157,7 +154,6 @@
 
             const colorSelector = document.getElementById("colorSelector");
             const bodyTextBox = document.getElementById("bodyTextBox");
-            const selectedColorP = document.getElementById("currentTextColorP");
             const publishButton = document.getElementById("post");
             const titleBox = document.getElementById("title");
             const authorBox = document.getElementById("author");
@@ -165,10 +161,6 @@
             const statusBar = document.getElementById("passStatus");
 
             let savedRange = null;
-
-            document.addEventListener("click", () => {
-                selectedColorP.textContent = getCaretTextColor();
-            });
 
             document.addEventListener("selectionchange", () => {
                 const sel = window.getSelection();
@@ -289,24 +281,7 @@
 
                 return selection.getRangeAt(0);
             }
-
-            function getCaretTextColor() {
-                const range = getCaretPosition();
-
-                let node = range.startContainer;
-
-                // If it's a text node, climb to its parent element
-                if (node.nodeType === Node.TEXT_NODE) {
-                    node = node.parentElement;
-                }
-
-                // If caret is directly in the contenteditable div
-                if (node === bodyTextBox) {
-                    return getComputedStyle(bodyTextBox).color;
-                }
-
-                return getComputedStyle(node).color;
-            }
         </script>
     </body>
 </html>
+
